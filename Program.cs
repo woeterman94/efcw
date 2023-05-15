@@ -2,12 +2,16 @@
 using Microsoft.EntityFrameworkCore;
 
 
-namespace EfCore.Console
+namespace EfCore.Techorama
 {
     public class Program
     {
         static void Main(string[] args)
         {
+            using var db = new WouterDataBaseContext();
+            db.Database.EnsureDeleted(); // In real word scenarios use async!
+            db.Database.EnsureCreated();
+
         }
     }
 
@@ -17,12 +21,20 @@ namespace EfCore.Console
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
+            optionsBuilder.UseSqlServer(@"Server=.;Database=Wouter;User Id=sa;Password=W@ffles!123;ConnectRetryCount=0;TrustServerCertificate=True");
+            optionsBuilder.LogTo(Console.WriteLine);
+            optionsBuilder.EnableSensitiveDataLogging();
+
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
         }
+
+        public DbSet<Owner> Owners { get; set; }
+        public DbSet<Cat> Cats { get; set; }
+
     }
 
 
