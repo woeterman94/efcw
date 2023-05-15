@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace EfCore.Techorama
 {
@@ -11,6 +12,20 @@ namespace EfCore.Techorama
             using var db = new WouterDataBaseContext();
             db.Database.EnsureDeleted(); // In real word scenarios use async!
             db.Database.EnsureCreated();
+            db.Owners.Add(new Owner
+            {
+                FirstName = "Wouter",
+                LastName = "V",
+                Cats = new List<Cat>
+            {
+                new Cat { Name = "Garfield", SleepDuration = new Duration(10), FurColor = "Orange", OnADiet = true },
+                new Cat { Name = "Floki",  SleepDuration = new Duration(14), FurColor = "Cinamon", OnADiet = false },
+                new Cat { Name = "Charlie",  SleepDuration = new Duration(11), FurColor = "Brownie", OnADiet = false },
+
+
+            }
+            });
+            db.SaveChanges();
 
         }
     }
@@ -18,6 +33,9 @@ namespace EfCore.Techorama
 
     class WouterDataBaseContext : DbContext
     {
+
+        // multi tenany configuration here?
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
@@ -32,6 +50,7 @@ namespace EfCore.Techorama
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.ApplyConfiguration(new OwnerConfiguration());
+            modelBuilder.ApplyConfiguration(new CatConfiguration());
         }
 
         public DbSet<Owner> Owners => Set<Owner>();
@@ -54,6 +73,11 @@ namespace EfCore.Techorama
                 .WithOne(x => x.Owner)
                 .HasForeignKey(x => x.OwnerId)
                 .OnDelete(deleteBehavior: DeleteBehavior.Cascade);
+            builder.Property(x => x.Id).UseIdentityColumn();
+            builder.OwnsOne(x => x.HomeAddress); // owned type
+            builder.OwnsOne(x => x.ShippingAddress);
+            builder.HasQueryFilter(x => x.Active); // kan je overschrijven met ignore query filter
+
         }
     }
 
@@ -61,7 +85,14 @@ namespace EfCore.Techorama
     {
         public void Configure(EntityTypeBuilder<Cat> builder)
         {
-            // builder.Property()
+            //builder.Property(x => x.DateOfBirth)
+            //    .UsePropertyAccessMode(PropertyAccessMode.FieldDuringConstruction)
+            //    .HasField("dob");
+
+            builder.Property<DateTimeOffset>("LastUpdated"); // shadow property
+
+            builder.Property(x => x.SleepDuration)
+                .HasConversion(new DurationConverter());
         }
     }
 
@@ -70,25 +101,61 @@ namespace EfCore.Techorama
     class Owner
     {
         public int Id { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
+        public bool Active { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+
+        public Address ShippingAddress { get; set; }
+        public Address HomeAddress { get; set; }
+
 
         public ICollection<Cat> Cats { get; set; }
     }
+
+    class Address
+    {
+        public string? StreetName { get; set; }
+        public string? City { get; set; }
+        public string? Country { get; set; }
+    }
+
+    class Duration // value object?
+    {
+        private readonly int _value;
+        public Duration(int ms)
+        {
+            _value = ms;
+        }
+
+        // duration.fromSeconds(...)
+
+        public int Value => _value;
+    }
+
+    class DurationConverter : ValueConverter<Duration, int>
+    {
+        public DurationConverter() : base(d => d.Value, x => new Duration(x), null)
+        {
+        }
+    }
+
+
 
     class Cat
     {
         public int Id { get; set; }
         public int OwnerId { get; set; }
-        public string Race { get; set; }
-        public int Weight { get; set; }
-        public bool OnADiet { get; set; }
-        public string FavoriteFood { get; set; }
-        public string FurType { get; set; }
-        public string FurPattern { get; set; }
-        public string FurColor { get; set; }
-        public int FurSoftness { get; set; }
+        public DateTime DateOfBirth { get; set; }
+        public string? Race { get; set; }
+        public int? Weight { get; set; }
+        public bool? OnADiet { get; set; }
+        public Duration SleepDuration { get; set; }
+        public string? FavoriteFood { get; set; }
+        public string? FurType { get; set; }
+        public string? FurPattern { get; set; }
+        public string? FurColor { get; set; }
+        public int? FurSoftness { get; set; }
         public Owner Owner { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 }
