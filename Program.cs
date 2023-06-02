@@ -16,6 +16,7 @@ namespace EfCore.Techorama
             {
                 FirstName = "Wouter",
                 LastName = "V",
+                Vehicle = new Train() { TrainTicket = "20233392943", MaxSpeed = 300 },
                 Cats = new List<Cat>
             {
                 new Cat { Name = "Garfield", SleepDuration = new Duration(10), FurColor = "Orange", OnADiet = true },
@@ -25,6 +26,14 @@ namespace EfCore.Techorama
 
             }
             });
+
+            db.Owners.Add(new Owner
+            {
+                FirstName = "Marcel",
+                LastName = "De Bel",
+                Vehicle = new Car() { CarKey = "GFDH32", MaxSpeed = 234 }
+            });
+
             db.SaveChanges();
 
         }
@@ -51,6 +60,10 @@ namespace EfCore.Techorama
 
             modelBuilder.ApplyConfiguration(new OwnerConfiguration());
             modelBuilder.ApplyConfiguration(new CatConfiguration());
+            modelBuilder.Entity<Vehicle>()
+               .HasDiscriminator<string>("vehicleType")
+               .HasValue<Train>("choochoo")
+               .HasValue<Car>("vroomvroom");
         }
 
         public DbSet<Owner> Owners => Set<Owner>();
@@ -77,6 +90,8 @@ namespace EfCore.Techorama
             builder.OwnsOne(x => x.HomeAddress); // owned type
             builder.OwnsOne(x => x.ShippingAddress);
             builder.HasQueryFilter(x => x.Active); // kan je overschrijven met ignore query filter
+
+
 
         }
     }
@@ -107,6 +122,8 @@ namespace EfCore.Techorama
 
         public Address ShippingAddress { get; set; }
         public Address HomeAddress { get; set; }
+
+        public Vehicle Vehicle { get; set; }
 
 
         public ICollection<Cat> Cats { get; set; }
@@ -158,4 +175,25 @@ namespace EfCore.Techorama
         public Owner Owner { get; set; }
         public string? Name { get; set; }
     }
+
+
+    // inheritance
+
+    class Vehicle
+    {
+        public Guid Id { get; set; }
+        public int MaxSpeed { get; set; }
+    }
+
+    class Car : Vehicle
+    {
+        public string CarKey { get; set; }
+    }
+
+    class Train : Vehicle
+    {
+        public string TrainTicket { get; set; }
+    }
+
+
 }
